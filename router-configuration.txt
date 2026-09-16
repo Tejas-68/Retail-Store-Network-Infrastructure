@@ -1,0 +1,200 @@
+# ==============================================================================
+# CISCO IOS ROUTER CONFIGURATION: R1-EDGE
+# ==============================================================================
+# Device: Cisco 2911 ISR / 4321 Edge Gateway Router
+# Role: Retail Store Gateway, Router-on-a-Stick (802.1Q), DHCP Server, NAT/PAT, ACLs
+# Location: MDF Server Room, Rack 1
+# ==============================================================================
+
+--- [OVERVIEW & KEY RESPONSIBILITIES] ---
+1. Router-on-a-Stick Subinterfaces: Terminates 802.1Q trunks for VLANs 10, 20, 30, 40, 99, 666.
+2. Centralized DHCP Engine: Exclusions and pools with custom DNS and option strings.
+3. NAT/PAT Overload: Translates RFC 1918 private addresses to public IP 203.0.113.2.
+4. Security & PCI-DSS ACLs: Enforces strict perimeter isolation between POS terminals and corporate staff.
+5. Management Hardening: SSH v2 only, encrypted secrets, aggressive timeouts, banner warnings.
+
+=========================== [START RUNNING CONFIGURATION] ===========================
+
+version 15.4
+service timestamps debug datetime msec
+service timestamps log datetime msec
+service password-encryption
+!
+hostname R1-EDGE
+!
+enable secret 5 $1$mERr$hx5rVt7rPNoS4wqbXKX7m0
+!
+no ip domain-lookup
+ip domain-name retail.internal
+ip ssh version 2
+ip ssh time-out 60
+ip ssh authentication-retries 3
+!
+username admin privilege 15 secret 5 $1$mERr$hx5rVt7rPNoS4wqbXKX7m0
+!
+! --- DHCP RESERVATIONS & EXCLUDED ADDRESS RANGES ---
+ip dhcp excluded-address 192.168.10.1 192.168.10.10
+ip dhcp excluded-address 192.168.10.51 192.168.10.254
+ip dhcp excluded-address 192.168.20.1 192.168.20.50
+ip dhcp excluded-address 192.168.20.201 192.168.20.254
+ip dhcp excluded-address 192.168.30.1 192.168.30.254
+ip dhcp excluded-address 192.168.40.1 192.168.40.10
+ip dhcp excluded-address 192.168.40.51 192.168.40.254
+ip dhcp excluded-address 192.168.99.1 192.168.99.254
+!
+! --- ACTIVE DHCP POOLS ---
+ip dhcp pool POS_POOL
+ network 192.168.10.0 255.255.255.0
+ default-router 192.168.10.1
+ dns-server 192.168.30.10 8.8.8.8
+ domain-name retail.internal
+ lease 0 12 0
+!
+ip dhcp pool STAFF_POOL
+ network 192.168.20.0 255.255.255.0
+ default-router 192.168.20.1
+ dns-server 192.168.30.10 8.8.8.8
+ domain-name retail.internal
+ lease 1 0 0
+!
+ip dhcp pool PRINTER_POOL
+ network 192.168.40.0 255.255.255.0
+ default-router 192.168.40.1
+ dns-server 192.168.30.10
+ lease 7 0 0
+!
+! --- ACCESS CONTROL LISTS (ACLs) ---
+ip access-list extended ACL_POS_IN
+ remark === PERMIT POS TO DATABASE / ERP SERVICES ===
+ permit tcp 192.168.10.0 0.0.0.255 host 192.168.30.12 eq 1433
+ permit tcp 192.168.10.0 0.0.0.255 host 192.168.30.12 eq 443
+ remark === PERMIT POS TO CORE DNS / NTP / DHCP SERVICES ===
+ permit udp 192.168.10.0 0.0.0.255 host 192.168.30.10 eq domain
+ permit tcp 192.168.10.0 0.0.0.255 host 192.168.30.10 eq domain
+ permit udp 192.168.10.0 0.0.0.255 host 192.168.30.10 eq 123
+ permit udp any eq bootpc any eq bootps
+ remark === PERMIT PRINT JOBS TO RECEIPT PRINTERS ===
+ permit tcp 192.168.10.0 0.0.0.255 192.168.40.0 0.0.0.255 eq 9100
+ permit tcp 192.168.10.0 0.0.0.255 192.168.40.0 0.0.0.255 eq 515
+ remark === PERMIT ENCRYPTED WAN PAYMENT GATEWAY EGRESS ===
+ permit tcp 192.168.10.0 0.0.0.255 any eq 443
+ remark === DENY POS ACCESS TO STAFF AND MANAGEMENT (PCI-DSS 1.3) ===
+ deny   ip 192.168.10.0 0.0.0.255 192.168.20.0 0.0.0.255 log
+ deny   ip 192.168.10.0 0.0.0.255 192.168.99.0 0.0.0.255 log
+ deny   ip any any log
+!
+ip access-list extended ACL_STAFF_IN
+ remark === STRICTLY BLOCK STAFF ACCESS TO POS ENVIRONMENT ===
+ deny   ip 192.168.20.0 0.0.0.255 192.168.10.0 0.0.0.255 log
+ remark === PERMIT STAFF ACCESS TO DOMAIN SERVICES & FILE STORAGE ===
+ permit ip 192.168.20.0 0.0.0.255 host 192.168.30.10
+ permit tcp 192.168.20.0 0.0.0.255 host 192.168.30.12 eq 443
+ permit tcp 192.168.20.0 0.0.0.255 192.168.40.0 0.0.0.255 eq 9100
+ permit tcp 192.168.20.0 0.0.0.255 192.168.40.0 0.0.0.255 eq 515
+ permit tcp 192.168.20.0 0.0.0.255 192.168.40.0 0.0.0.255 eq 631
+ remark === PERMIT OUTBOUND INTERNET ACCESS ===
+ permit tcp 192.168.20.0 0.0.0.255 any eq 80
+ permit tcp 192.168.20.0 0.0.0.255 any eq 443
+ permit udp 192.168.20.0 0.0.0.255 any eq domain
+ permit udp any eq bootpc any eq bootps
+ permit icmp 192.168.20.0 0.0.0.255 any
+ deny   ip any any log
+!
+ip access-list extended ACL_PRINTER_IN
+ remark === PRINTERS CANNOT INITIATE CONNECTIONS TO POS OR INTERNET ===
+ deny   ip 192.168.40.0 0.0.0.255 192.168.10.0 0.0.0.255 log
+ deny   ip 192.168.40.0 0.0.0.255 203.0.113.0 0.0.0.255 log
+ deny   ip 192.168.40.0 0.0.0.255 any log-input
+ permit udp 192.168.40.0 0.0.0.255 host 192.168.30.10 eq 123
+ permit udp 192.168.40.0 0.0.0.255 host 192.168.30.10 eq 161
+ permit udp 192.168.40.0 0.0.0.255 host 192.168.30.10 eq 162
+ permit icmp 192.168.40.0 0.0.0.255 any echo-reply
+ deny   ip any any
+!
+! --- PHYSICAL & LOGICAL INTERFACES ---
+interface GigabitEthernet0/0/0
+ description 802.1Q Trunk Link to SW-CORE
+ no ip address
+ duplex auto
+ speed auto
+ no shutdown
+!
+interface GigabitEthernet0/0/0.10
+ description Gateway for VLAN 10 [POS Terminals]
+ encapsulation dot1Q 10
+ ip address 192.168.10.1 255.255.255.0
+ ip access-group ACL_POS_IN in
+ ip nat inside
+!
+interface GigabitEthernet0/0/0.20
+ description Gateway for VLAN 20 [Staff & Workstations]
+ encapsulation dot1Q 20
+ ip address 192.168.20.1 255.255.255.0
+ ip access-group ACL_STAFF_IN in
+ ip nat inside
+!
+interface GigabitEthernet0/0/0.30
+ description Gateway for VLAN 30 [Server Farm DMZ]
+ encapsulation dot1Q 30
+ ip address 192.168.30.1 255.255.255.0
+ ip nat inside
+!
+interface GigabitEthernet0/0/0.40
+ description Gateway for VLAN 40 [Network Printers]
+ encapsulation dot1Q 40
+ ip address 192.168.40.1 255.255.255.0
+ ip access-group ACL_PRINTER_IN in
+ ip nat inside
+!
+interface GigabitEthernet0/0/0.99
+ description Gateway for VLAN 99 [Management SVI]
+ encapsulation dot1Q 99
+ ip address 192.168.99.1 255.255.255.0
+!
+interface GigabitEthernet0/0/0.666
+ description Native Blackhole VLAN - Untagged Traffic Drop
+ encapsulation dot1Q 666 native
+ no ip address
+!
+interface GigabitEthernet0/0/1
+ description WAN Uplink to ISP Gateway
+ ip address 203.0.113.2 255.255.255.252
+ ip nat outside
+ duplex auto
+ speed auto
+ no shutdown
+!
+! --- NAT / PAT OVERLOAD CONFIGURATION ---
+access-list 1 permit 192.168.10.0 0.0.0.255
+access-list 1 permit 192.168.20.0 0.0.0.255
+access-list 1 permit 192.168.30.0 0.0.0.255
+!
+ip nat inside source list 1 interface GigabitEthernet0/0/1 overload
+!
+! --- DEFAULT STATIC ROUTE ---
+ip route 0.0.0.0 0.0.0.0 203.0.113.1
+!
+! --- SECURITY WARNING BANNER ---
+banner motd ^C
+*******************************************************************************
+* WARNING: AUTHORIZED ACCESS ONLY - RETAIL STORE NETWORK INFRASTRUCTURE       *
+* All actions are monitored and logged. Unauthorized access is prohibited.    *
+* SIMULATED LAB ENVIRONMENT - NOT FOR PRODUCTION DISCLOSURE                   *
+*******************************************************************************
+^C
+!
+! --- MANAGEMENT LINE ACCESS ---
+line con 0
+ exec-timeout 5 0
+ logging synchronous
+ login local
+ transport input none
+!
+line vty 0 4
+ exec-timeout 10 0
+ logging synchronous
+ login local
+ transport input ssh
+!
+end
+============================ [END RUNNING CONFIGURATION] ============================

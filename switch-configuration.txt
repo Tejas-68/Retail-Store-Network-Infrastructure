@@ -1,0 +1,364 @@
+# ==============================================================================
+# CISCO IOS SWITCH CONFIGURATIONS: RETAIL STORE INFRASTRUCTURE
+# ==============================================================================
+# Architecture: Hierarchical 2-Tier Model (Distribution / Access)
+# Devices Included:
+#   1. SW-CORE   - Cisco Catalyst 3560/3650 Distribution Switch (MDF Rack 1)
+#   2. SW-POS    - Cisco Catalyst 2960 Access Switch (IDF 1 - Cashier Bank)
+#   3. SW-STAFF  - Cisco Catalyst 2960 Access Switch (IDF 2 - Store Admin)
+#   4. SW-SERVER - Cisco Catalyst 3750/2960 Access Switch (MDF Rack 2)
+# ==============================================================================
+
+################################################################################
+### SECTION 1: CORE / DISTRIBUTION SWITCH (SW-CORE)                          ###
+################################################################################
+hostname SW-CORE
+enable secret 5 $1$mERr$hx5rVt7rPNoS4wqbXKX7m0
+service password-encryption
+no ip domain-lookup
+ip domain-name retail.internal
+ip ssh version 2
+username admin privilege 15 secret 5 $1$mERr$hx5rVt7rPNoS4wqbXKX7m0
+
+! STP Rapid-PVST Root Configuration
+spanning-tree mode rapid-pvst
+spanning-tree extend system-id
+spanning-tree vlan 10,20,30,40,99 root primary
+
+! VLAN Creation
+vlan 10
+ name POS-TERMINALS
+vlan 20
+ name STAFF-WORKSTATIONS
+vlan 30
+ name SERVER-FARM
+vlan 40
+ name NETWORK-PRINTERS
+vlan 99
+ name MANAGEMENT-SVI
+vlan 666
+ name NATIVE-BLACKHOLE
+
+! Router Uplink (802.1Q Trunk)
+interface GigabitEthernet0/1
+ description Trunk to R1-EDGE [Gi0/0/0]
+ switchport trunk encapsulation dot1q
+ switchport mode trunk
+ switchport trunk native vlan 666
+ switchport trunk allowed vlan 10,20,30,40,99
+ switchport nonegotiate
+ duplex full
+ speed 1000
+ no shutdown
+
+! Downlink to SW-POS
+interface GigabitEthernet0/2
+ description Trunk to SW-POS [Gi0/1]
+ switchport trunk encapsulation dot1q
+ switchport mode trunk
+ switchport trunk native vlan 666
+ switchport trunk allowed vlan 10,99
+ switchport nonegotiate
+ duplex full
+ speed 1000
+ no shutdown
+
+! Downlink to SW-STAFF
+interface GigabitEthernet0/3
+ description Trunk to SW-STAFF [Gi0/1]
+ switchport trunk encapsulation dot1q
+ switchport mode trunk
+ switchport trunk native vlan 666
+ switchport trunk allowed vlan 20,40,99
+ switchport nonegotiate
+ duplex full
+ speed 1000
+ no shutdown
+
+! Downlink to SW-SERVER
+interface GigabitEthernet0/4
+ description Trunk to SW-SERVER [Gi0/1]
+ switchport trunk encapsulation dot1q
+ switchport mode trunk
+ switchport trunk native vlan 666
+ switchport trunk allowed vlan 30,99
+ switchport nonegotiate
+ duplex full
+ speed 1000
+ no shutdown
+
+! Shutdown Unused Ports
+interface range GigabitEthernet0/5 - 24
+ description UNUSED PORTS - SECURITY DISABLED
+ switchport mode access
+ switchport access vlan 666
+ shutdown
+
+! Management SVI
+interface Vlan99
+ description SW-CORE Management Interface
+ ip address 192.168.99.2 255.255.255.0
+ no shutdown
+ip default-gateway 192.168.99.1
+
+banner motd ^C
+*******************************************************************************
+* WARNING: AUTHORIZED ACCESS ONLY - RETAIL CORE DISTRIBUTION SWITCH (SW-CORE) *
+*******************************************************************************
+^C
+line con 0
+ exec-timeout 5 0
+ logging synchronous
+ login local
+line vty 0 4
+ exec-timeout 10 0
+ logging synchronous
+ login local
+ transport input ssh
+!
+
+################################################################################
+### SECTION 2: POS ACCESS SWITCH (SW-POS)                                    ###
+################################################################################
+hostname SW-POS
+enable secret 5 $1$mERr$hx5rVt7rPNoS4wqbXKX7m0
+service password-encryption
+no ip domain-lookup
+ip domain-name retail.internal
+ip ssh version 2
+username admin privilege 15 secret 5 $1$mERr$hx5rVt7rPNoS4wqbXKX7m0
+
+vlan 10
+ name POS-TERMINALS
+vlan 99
+ name MANAGEMENT-SVI
+vlan 666
+ name NATIVE-BLACKHOLE
+
+! 24 Access Ports with Sticky Port Security and BPDU Guard
+interface range FastEthernet0/1 - 24
+ description POS Register Connection - VLAN 10
+ switchport mode access
+ switchport access vlan 10
+ switchport port-security
+ switchport port-security maximum 2
+ switchport port-security violation restrict
+ switchport port-security mac-address sticky
+ spanning-tree portfast
+ spanning-tree bpduguard enable
+ duplex full
+ speed 100
+ no shutdown
+
+! Uplink to SW-CORE
+interface GigabitEthernet0/1
+ description Uplink to SW-CORE [Gi0/2]
+ switchport mode trunk
+ switchport trunk native vlan 666
+ switchport trunk allowed vlan 10,99
+ switchport nonegotiate
+ duplex full
+ speed 1000
+ no shutdown
+
+interface GigabitEthernet0/2
+ switchport mode access
+ switchport access vlan 666
+ shutdown
+
+interface Vlan99
+ description SW-POS Management Interface
+ ip address 192.168.99.3 255.255.255.0
+ no shutdown
+ip default-gateway 192.168.99.1
+
+line con 0
+ exec-timeout 5 0
+ logging synchronous
+ login local
+line vty 0 4
+ exec-timeout 10 0
+ logging synchronous
+ login local
+ transport input ssh
+!
+
+################################################################################
+### SECTION 3: STAFF & PRINTER ACCESS SWITCH (SW-STAFF)                      ###
+################################################################################
+hostname SW-STAFF
+enable secret 5 $1$mERr$hx5rVt7rPNoS4wqbXKX7m0
+service password-encryption
+no ip domain-lookup
+ip domain-name retail.internal
+ip ssh version 2
+username admin privilege 15 secret 5 $1$mERr$hx5rVt7rPNoS4wqbXKX7m0
+
+vlan 20
+ name STAFF-WORKSTATIONS
+vlan 40
+ name NETWORK-PRINTERS
+vlan 99
+ name MANAGEMENT-SVI
+vlan 666
+ name NATIVE-BLACKHOLE
+
+! Staff Ports (VLAN 20) with Shutdown Violation Action
+interface range FastEthernet0/1 - 12
+ description Staff Workstation - VLAN 20
+ switchport mode access
+ switchport access vlan 20
+ switchport port-security
+ switchport port-security maximum 2
+ switchport port-security violation shutdown
+ switchport port-security mac-address sticky
+ spanning-tree portfast
+ spanning-tree bpduguard enable
+ duplex full
+ speed 100
+ no shutdown
+
+! Network Printer Ports (VLAN 40)
+interface range FastEthernet0/13 - 24
+ description Network Label & Receipt Printers - VLAN 40
+ switchport mode access
+ switchport access vlan 40
+ switchport port-security
+ switchport port-security maximum 2
+ switchport port-security violation restrict
+ switchport port-security mac-address sticky
+ spanning-tree portfast
+ spanning-tree bpduguard enable
+ duplex full
+ speed 100
+ no shutdown
+
+! Uplink to SW-CORE
+interface GigabitEthernet0/1
+ description Uplink to SW-CORE [Gi0/3]
+ switchport mode trunk
+ switchport trunk native vlan 666
+ switchport trunk allowed vlan 20,40,99
+ switchport nonegotiate
+ duplex full
+ speed 1000
+ no shutdown
+
+interface GigabitEthernet0/2
+ switchport mode access
+ switchport access vlan 666
+ shutdown
+
+interface Vlan99
+ description SW-STAFF Management Interface
+ ip address 192.168.99.4 255.255.255.0
+ no shutdown
+ip default-gateway 192.168.99.1
+
+line con 0
+ exec-timeout 5 0
+ logging synchronous
+ login local
+line vty 0 4
+ exec-timeout 10 0
+ logging synchronous
+ login local
+ transport input ssh
+!
+
+################################################################################
+### SECTION 4: SERVER FARM ACCESS SWITCH (SW-SERVER)                         ###
+################################################################################
+hostname SW-SERVER
+enable secret 5 $1$mERr$hx5rVt7rPNoS4wqbXKX7m0
+service password-encryption
+no ip domain-lookup
+ip domain-name retail.internal
+ip ssh version 2
+username admin privilege 15 secret 5 $1$mERr$hx5rVt7rPNoS4wqbXKX7m0
+
+vlan 30
+ name SERVER-FARM
+vlan 99
+ name MANAGEMENT-SVI
+vlan 666
+ name NATIVE-BLACKHOLE
+
+interface FastEthernet0/1
+ description Active Directory & DNS Server [SRV-AD-DNS]
+ switchport mode access
+ switchport access vlan 30
+ switchport port-security
+ switchport port-security maximum 2
+ switchport port-security violation restrict
+ switchport port-security mac-address sticky
+ spanning-tree portfast
+ duplex full
+ speed 100
+ no shutdown
+
+interface FastEthernet0/2
+ description Centralized DHCP Server [SRV-DHCP]
+ switchport mode access
+ switchport access vlan 30
+ switchport port-security
+ switchport port-security maximum 2
+ switchport port-security violation restrict
+ switchport port-security mac-address sticky
+ spanning-tree portfast
+ duplex full
+ speed 100
+ no shutdown
+
+interface FastEthernet0/3
+ description Retail Database & ERP Server [SRV-RETAIL-DB]
+ switchport mode access
+ switchport access vlan 30
+ switchport port-security
+ switchport port-security maximum 2
+ switchport port-security violation restrict
+ switchport port-security mac-address sticky
+ spanning-tree portfast
+ duplex full
+ speed 100
+ no shutdown
+
+interface range FastEthernet0/4 - 24
+ description Expansion Server Ports - VLAN 30
+ switchport mode access
+ switchport access vlan 30
+ shutdown
+
+! Uplink to SW-CORE
+interface GigabitEthernet0/1
+ description Uplink to SW-CORE [Gi0/4]
+ switchport mode trunk
+ switchport trunk native vlan 666
+ switchport trunk allowed vlan 30,99
+ switchport nonegotiate
+ duplex full
+ speed 1000
+ no shutdown
+
+interface GigabitEthernet0/2
+ switchport mode access
+ switchport access vlan 666
+ shutdown
+
+interface Vlan99
+ description SW-SERVER Management Interface
+ ip address 192.168.99.5 255.255.255.0
+ no shutdown
+ip default-gateway 192.168.99.1
+
+line con 0
+ exec-timeout 5 0
+ logging synchronous
+ login local
+line vty 0 4
+ exec-timeout 10 0
+ logging synchronous
+ login local
+ transport input ssh
+!
+end

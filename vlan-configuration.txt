@@ -1,0 +1,146 @@
+# ==============================================================================
+# CISCO IOS VLAN CONFIGURATION & TRUNKING SPECIFICATION
+# ==============================================================================
+# Architecture: 802.1Q Encapsulation with VLAN Segmentation & Blackhole Native VLAN
+# Security Framework: PCI-DSS Segment Isolation (Cardholder Data Protection)
+# ==============================================================================
+
+--- [1. VLAN DATABASE DEFINITIONS] ---
+Configure on all switches (SW-CORE, SW-POS, SW-STAFF, SW-SERVER):
+
+vlan 10
+ name POS-TERMINALS
+!
+vlan 20
+ name STAFF-WORKSTATIONS
+!
+vlan 30
+ name SERVER-FARM
+!
+vlan 40
+ name NETWORK-PRINTERS
+!
+vlan 99
+ name MANAGEMENT-SVI
+!
+vlan 666
+ name NATIVE-BLACKHOLE
+!
+
+--- [2. ROUTER-ON-A-STICK SUBINTERFACE TRUNKING (R1-EDGE)] ---
+Encapsulates 802.1Q tags on the router physical interface Gi0/0/0:
+
+interface GigabitEthernet0/0/0
+ no ip address
+ no shutdown
+!
+interface GigabitEthernet0/0/0.10
+ description Gateway for VLAN 10 [POS Terminals]
+ encapsulation dot1Q 10
+ ip address 192.168.10.1 255.255.255.0
+ ip nat inside
+!
+interface GigabitEthernet0/0/0.20
+ description Gateway for VLAN 20 [Staff & Back-Office]
+ encapsulation dot1Q 20
+ ip address 192.168.20.1 255.255.255.0
+ ip nat inside
+!
+interface GigabitEthernet0/0/0.30
+ description Gateway for VLAN 30 [Server Farm DMZ]
+ encapsulation dot1Q 30
+ ip address 192.168.30.1 255.255.255.0
+ ip nat inside
+!
+interface GigabitEthernet0/0/0.40
+ description Gateway for VLAN 40 [Network Printers]
+ encapsulation dot1Q 40
+ ip address 192.168.40.1 255.255.255.0
+ ip nat inside
+!
+interface GigabitEthernet0/0/0.99
+ description Gateway for VLAN 99 [Management SVI]
+ encapsulation dot1Q 99
+ ip address 192.168.99.1 255.255.255.0
+!
+interface GigabitEthernet0/0/0.666
+ description Native Blackhole VLAN - Untagged Frame Drop
+ encapsulation dot1Q 666 native
+ no ip address
+!
+
+--- [3. CORE SWITCH TRUNK PORTS (SW-CORE)] ---
+interface GigabitEthernet0/1
+ description Uplink to R1-EDGE
+ switchport trunk encapsulation dot1q
+ switchport mode trunk
+ switchport trunk native vlan 666
+ switchport trunk allowed vlan 10,20,30,40,99
+ switchport nonegotiate
+!
+interface GigabitEthernet0/2
+ description Downlink to SW-POS
+ switchport trunk encapsulation dot1q
+ switchport mode trunk
+ switchport trunk native vlan 666
+ switchport trunk allowed vlan 10,99
+ switchport nonegotiate
+!
+interface GigabitEthernet0/3
+ description Downlink to SW-STAFF
+ switchport trunk encapsulation dot1q
+ switchport mode trunk
+ switchport trunk native vlan 666
+ switchport trunk allowed vlan 20,40,99
+ switchport nonegotiate
+!
+interface GigabitEthernet0/4
+ description Downlink to SW-SERVER
+ switchport trunk encapsulation dot1q
+ switchport mode trunk
+ switchport trunk native vlan 666
+ switchport trunk allowed vlan 30,99
+ switchport nonegotiate
+!
+
+--- [4. ACCESS SWITCHES TRUNK UPLINKS] ---
+# Applied to Gi0/1 on SW-POS, SW-STAFF, SW-SERVER:
+# (Note: Catalyst 2960 switches use native dot1q encapsulation automatically)
+
+# On SW-POS:
+interface GigabitEthernet0/1
+ switchport mode trunk
+ switchport trunk native vlan 666
+ switchport trunk allowed vlan 10,99
+ switchport nonegotiate
+!
+
+# On SW-STAFF:
+interface GigabitEthernet0/1
+ switchport mode trunk
+ switchport trunk native vlan 666
+ switchport trunk allowed vlan 20,40,99
+ switchport nonegotiate
+!
+
+# On SW-SERVER:
+interface GigabitEthernet0/1
+ switchport mode trunk
+ switchport trunk native vlan 666
+ switchport trunk allowed vlan 30,99
+ switchport nonegotiate
+!
+
+--- [5. SECURITY RATIONALE FOR NATIVE VLAN 666] ---
+Default Cisco IOS uses VLAN 1 as the untagged native VLAN. In this architecture:
+1. VLAN 1 is administratively decoupled and pruned from all trunk allowed lists.
+2. VLAN 666 is defined as an unrouted blackhole VLAN and designated as the native VLAN across all trunks.
+3. This neutralizes 802.1Q double-tagging (VLAN hopping) attacks, ensuring that attackers cannot inject unauthorized frames into other segments.
+
+--- [6. VLAN VERIFICATION COMMANDS] ---
+SW-CORE# show vlan brief
+SW-CORE# show interfaces trunk
+SW-CORE# show interfaces GigabitEthernet0/1 switchport
+SW-CORE# show spanning-tree root
+SW-POS# show mac address-table vlan 10
+R1-EDGE# show ip interface brief | include GigabitEthernet0/0/0
