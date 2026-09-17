@@ -167,4 +167,4 @@ R1-EDGE# show access-lists ACL_POS_IN
 
 **Tejas N. C.**  
 - **GitHub**: [@Tejas-68](https://github.com/Tejas-68)  
-- **Role**: IT Support Engineer & Network Infrastructure Enthusiast
+- **Role**: IT Support & Network Administrator
