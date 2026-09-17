@@ -29,7 +29,7 @@ I built this simulation to model how a real-world, mid-sized retail hypermarket 
 
 The design uses a classic 2-tier hierarchical model (Distribution and Access) connected to a centralized Edge Gateway Router:
 
-![Network Topology Diagram](mermaid-topology.png)
+![Network Topology Diagram](./mermaid-topology.png)
 
 ---
 
