@@ -1,23 +1,26 @@
-# Enterprise Network Troubleshooting & Diagnostic Field Guide
-## Retail Store Network Infrastructure Simulation
+# Retail Network Support & Diagnostic Field Guide
+### Hands-On Incident Troubleshooting Scenarios from the Sales Floor
+
+> [!IMPORTANT]
+> ### 🔒 Confidentiality & Sanitization Notice
+> All IP addresses, hostnames, ticket references, and MAC addresses in this troubleshooting guide are **100% sanitized dummy data** (RFC 1918 / RFC 5737 test nets) created for demonstration purposes. Zero confidential company records or actual employer infrastructure are disclosed.
 
 ---
 
-### 1. Executive Summary & Diagnostic Philosophy
+### 1. Diagnostic Methodology from the Field
 
-In an enterprise retail environment, network uptime directly governs revenue generation. A 10-minute network outage across Point of Sale (POS) checkout lanes leads to customer abandonments, revenue loss, and inventory discrepancies.
-
-This field guide documents real-world retail IT support troubleshooting workflows using the **OSI 7-Layer Bottom-Up Methodology**. It covers simulated incidents, diagnostic CLI commands, root cause analysis (RCA), and standard operating procedures (SOP) for remediation.
+When troubleshooting connectivity on an active retail floor, customer lines are waiting, and panic is the enemy. The most effective approach I use daily is the **OSI 7-Layer Bottom-Up Method**:
 
 ```
-       [ Application / Port Issues ]  <-- Layer 7: HTTP/S, MSSQL 1433, RAW 9100
-       [ Transport / ACL Drops    ]  <-- Layer 4: TCP SYN drops, Extended ACLs
-       [ Network / Subnet Routing ]  <-- Layer 3: Subinterfaces, Gateways, NAT
-       [ Data Link / VLAN Issues  ]  <-- Layer 2: 802.1Q Trunks, Port Security, STP
-       [ Physical Layer / Cables  ]  <-- Layer 1: Link LEDs, Bad Patch Cords
+       [ Layer 7: Application ]  <-- Payment software, POS app error codes, ERP web services
+       [ Layer 4: Transport   ]  <-- TCP port drops, blocked sockets (1433, 9100, 443), ACLs
+       [ Layer 3: Network     ]  <-- Default gateways, IP leases, subinterface routing, NAT
+       [ Layer 2: Data Link   ]  <-- Switchports, VLAN tags, trunk allowed lists, port security
+       [ Layer 1: Physical    ]  <-- Loose RJ-45 patch cables, port link LEDs, power cords
 ```
 
----
+Starting at Layer 1 and checking link lights and physical connections before jumping into complex routing issues saves critical minutes during retail operations. Below are five realistic support scenarios I documented from this lab simulation.
+
 
 ### 2. Scenario 1: POS Terminal Lane 04 Cannot Process Payments
 

@@ -1,7 +1,11 @@
 # Cisco Packet Tracer Lab Deployment & Recreation Guide
 ## Retail Store Network Infrastructure Simulation
 
+> [!NOTE]
+> **Confidentiality & Lab Notice**: All device names, IP blocks (`192.168.0.0/16`, `203.0.113.0/30`), and switch port allocations in this lab guide are sanitized dummy parameters for simulation purposes. No production company data or credentials are used.
+
 This guide provides step-by-step instructions for reproducing or inspecting this enterprise network topology inside **Cisco Packet Tracer** (version 8.0 or newer).
+
 
 ---
 

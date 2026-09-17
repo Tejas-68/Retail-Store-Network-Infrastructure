@@ -4,6 +4,11 @@
 # Device: Cisco 2911 ISR / 4321 Edge Gateway Router
 # Role: Retail Store Gateway, Router-on-a-Stick (802.1Q), DHCP Server, NAT/PAT, ACLs
 # Location: MDF Server Room, Rack 1
+# 
+# CONFIDENTIALITY & NON-DISCLOSURE NOTICE:
+# All IP addresses (192.168.0.0/16, 203.0.113.0/30), domain names (retail.internal),
+# and ACLs are sanitized fictional test parameters. Zero company proprietary data
+# or production credentials are used.
 # ==============================================================================
 
 --- [OVERVIEW & KEY RESPONSIBILITIES] ---

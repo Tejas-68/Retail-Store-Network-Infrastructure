@@ -7,6 +7,10 @@
 #   2. SW-POS    - Cisco Catalyst 2960 Access Switch (IDF 1 - Cashier Bank)
 #   3. SW-STAFF  - Cisco Catalyst 2960 Access Switch (IDF 2 - Store Admin)
 #   4. SW-SERVER - Cisco Catalyst 3750/2960 Access Switch (MDF Rack 2)
+#
+# CONFIDENTIALITY & NON-DISCLOSURE NOTICE:
+# All switch SVIs, VLAN IDs, and device names are sanitized laboratory dummy values.
+# No proprietary corporate infrastructure or production secrets are exposed.
 # ==============================================================================
 
 ################################################################################

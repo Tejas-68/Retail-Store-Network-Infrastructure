@@ -3,7 +3,12 @@
 # ==============================================================================
 # Architecture: 802.1Q Encapsulation with VLAN Segmentation & Blackhole Native VLAN
 # Security Framework: PCI-DSS Segment Isolation (Cardholder Data Protection)
+#
+# CONFIDENTIALITY & NON-DISCLOSURE NOTICE:
+# All VLAN IDs, names, and subnets are sanitized dummy values designed for this lab.
+# Zero proprietary corporate network parameters are disclosed.
 # ==============================================================================
+
 
 --- [1. VLAN DATABASE DEFINITIONS] ---
 Configure on all switches (SW-CORE, SW-POS, SW-STAFF, SW-SERVER):
