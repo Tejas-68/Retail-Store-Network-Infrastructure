@@ -31,43 +31,28 @@ The design uses a classic 2-tier hierarchical model (Distribution and Access) co
 
 ![Network Topology](network-topology.png)
 
-```
-                            +--------------------------+
-                            |      Internet Cloud      |
-                            +--------------------------+
-                                          |
-                              (WAN: 203.0.113.0/30)
-                                          |
-                            +--------------------------+
-                            |     R1-EDGE Gateway      |  <-- Cisco 2911 ISR
-                            |   (NAT, DHCP, ACLs)      |      Router-on-a-Stick
-                            +--------------------------+
-                                          | (802.1Q Trunk)
-                            +--------------------------+
-                            |     SW-CORE Switch       |  <-- Cisco Catalyst 3560
-                            | (Rapid-PVST+ Root Bridge)|      Native VLAN 666
-                            +--------------------------+
-                             /            |           \
-            +---------------+             |            +---------------+
-            |                             |                            |
-    (Trunk: 10, 99)               (Trunk: 20, 40, 99)           (Trunk: 30, 99)
-            |                             |                            |
-  +------------------+          +------------------+         +------------------+
-  |      SW-POS      |          |     SW-STAFF     |         |    SW-SERVER     |
-  | (Catalyst 2960)  |          | (Catalyst 2960)  |         | (Catalyst 3750)  |
-  +------------------+          +------------------+         +------------------+
-           |                              |                            |
-  +------------------+          +------------------+         +------------------+
-  | POS Terminals    |          | Staff Computers  |         | Data Center      |
-  | Registers 01-40  |          | Back-Office & HR |         | Active Directory |
-  | [VLAN 10]        |          | [VLAN 20]        |         | Retail DB / ERP  |
-  | PCI-DSS CDE      |          +------------------+         | [VLAN 30]        |
-  +------------------+                    |                  +------------------+
-                                +------------------+
-                                | Network Printers |
-                                | Receipt & Label  |
-                                | [VLAN 40]        |
-                                +------------------+
+```mermaid
+graph TD
+    Cloud((Internet Cloud)) -->|WAN: 203.0.113.0/30| R1[R1-EDGE Gateway<br>Cisco 2911 ISR<br>NAT, DHCP, ACLs]
+    R1 -->|802.1Q Trunk| CoreSwitch[SW-CORE Switch<br>Cisco Catalyst 3560<br>Rapid-PVST+ Root]
+    
+    CoreSwitch -->|Trunk: 10, 99| POSSwitch[SW-POS<br>Catalyst 2960]
+    CoreSwitch -->|Trunk: 20, 40, 99| StaffSwitch[SW-STAFF<br>Catalyst 2960]
+    CoreSwitch -->|Trunk: 30, 99| ServerSwitch[SW-SERVER<br>Catalyst 3750]
+    
+    POSSwitch --> POS[POS Terminals<br>Registers 01-40<br>VLAN 10: CDE]
+    
+    StaffSwitch --> Staff[Staff Computers<br>Back-Office & HR<br>VLAN 20]
+    StaffSwitch --> Printers[Network Printers<br>Receipt & Label<br>VLAN 40]
+    
+    ServerSwitch --> DC[Data Center<br>AD, Retail DB, ERP<br>VLAN 30]
+
+    classDef default fill:#f9f9f9,stroke:#333,stroke-width:1px;
+    classDef secure fill:#ffe6e6,stroke:#cc0000,stroke-width:2px;
+    classDef core fill:#e6f3ff,stroke:#0066cc,stroke-width:2px;
+    
+    class POS secure;
+    class R1,CoreSwitch core;
 ```
 
 ---
