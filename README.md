@@ -29,31 +29,7 @@ I built this simulation to model how a real-world, mid-sized retail hypermarket 
 
 The design uses a classic 2-tier hierarchical model (Distribution and Access) connected to a centralized Edge Gateway Router:
 
-![Network Topology](network-topology.png)
-
-```mermaid
-graph TD
-    Cloud((Internet Cloud)) -->|WAN: 203.0.113.0/30| R1[R1-EDGE Gateway<br>Cisco 2911 ISR<br>NAT, DHCP, ACLs]
-    R1 -->|802.1Q Trunk| CoreSwitch[SW-CORE Switch<br>Cisco Catalyst 3560<br>Rapid-PVST+ Root]
-    
-    CoreSwitch -->|Trunk: 10, 99| POSSwitch[SW-POS<br>Catalyst 2960]
-    CoreSwitch -->|Trunk: 20, 40, 99| StaffSwitch[SW-STAFF<br>Catalyst 2960]
-    CoreSwitch -->|Trunk: 30, 99| ServerSwitch[SW-SERVER<br>Catalyst 3750]
-    
-    POSSwitch --> POS[POS Terminals<br>Registers 01-40<br>VLAN 10: CDE]
-    
-    StaffSwitch --> Staff[Staff Computers<br>Back-Office & HR<br>VLAN 20]
-    StaffSwitch --> Printers[Network Printers<br>Receipt & Label<br>VLAN 40]
-    
-    ServerSwitch --> DC[Data Center<br>AD, Retail DB, ERP<br>VLAN 30]
-
-    classDef default fill:#f9f9f9,stroke:#333,stroke-width:1px;
-    classDef secure fill:#ffe6e6,stroke:#cc0000,stroke-width:2px;
-    classDef core fill:#e6f3ff,stroke:#0066cc,stroke-width:2px;
-    
-    class POS secure;
-    class R1,CoreSwitch core;
-```
+![Network Topology Diagram](mermaid-topology.png)
 
 ---
 
